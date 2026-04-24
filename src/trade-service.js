@@ -5,6 +5,7 @@ export class TradeService {
     constructor(db) {
         this.accountsCollection = db.collection('accounts');
         this.tradesCollection = db.collection('trades');
+        this.countersCollection = db.collection('counters');
         this.tradeFormatter = null;
     }
 
@@ -208,6 +209,12 @@ export class TradeService {
 
     async deleteTradesByAccountId(accountId) {
         const { deletedCount } = await this.tradesCollection.deleteMany({ accountId });
+        return deletedCount;
+    }
+
+    async deleteAll() {
+        const { deletedCount } = await this.tradesCollection.deleteMany({});
+        await this.countersCollection.deleteMany({ _id: /^[TO]-/ });
         return deletedCount;
     }
 

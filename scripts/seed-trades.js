@@ -5,37 +5,34 @@ import { TradeIdGenerator, OrderIdGenerator } from "../src/id-gen.js";
 import tradesData from '../seeds/trades.json' with { type: 'json' };
 
 
-async function reset(db) {
-    const tradesCollection = db.collection('trades');
-    const countersCollection = db.collection('counters');
-    
-    await tradesCollection.deleteMany({});
-    await countersCollection.deleteMany({ _id: /^[TO]-/ });
-}
+async function withTradeService(handler) {
+    const mongoClient = await createMongoClient(process.env.Mongo_url);
+    await mongoClient.connect();
+    const db = mongoClient.db("trading-journal");
 
-async function importTrades(db) {
     const tradeService = new TradeService(db);
     tradeService.tradeIdGenerator = new TradeIdGenerator(db);
     tradeService.orderIdGenerator = new OrderIdGenerator(db);
 
-    for (const input of tradesData) {
-        const tradeDetail = await tradeService.recordTrade(input);
-        console.log(`Record trade: ${tradeDetail.id}`);
+    try {
+        return await handler(tradeService);
+    } finally {
+        await mongoClient.close();
     }
 }
 
 async function main() {
-    const client = await createMongoClient(process.env.Mongo_url);
-    await client.connect();
-    const db = client.db("trading-journal");
+    try {
+        await withTradeService(async (tradeService) => {
+            await tradeService.deleteAll();
 
-    try{
-        await reset(db);
-        await importTrades(db);
+            for (const input of tradesData) {
+                const tradeDetail = await tradeService.recordTrade(input);
+                console.log(`Record trade: ${tradeDetail.id}`);
+            }
+        })
     } catch (e) {
-        console.log(e);
-    } finally {
-        await client.close();
+        console.error(e);
     }
 }
 
