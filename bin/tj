@@ -1,0 +1,177 @@
+#!/usr/bin/env node
+
+import "dotenv/config";
+import fs from 'fs/promises';
+import path from 'path'
+import * as z from "zod";
+import { program } from "commander";
+import { DateTime, Settings } from "luxon";
+import open from "open";
+import { createMongoClient } from "../src/mongo-client.js";
+import { TradeIdGenerator, OrderIdGenerator } from "../src/id-gen.js";
+import { TradeService } from "../src/trade-service.js";
+import { TradeFormatter } from "../src/trade-formatter.js";
+import config from "../tj.config.js";
+
+
+async function withTradeService(handler) {
+    const mongoClient = await createMongoClient(process.env.Mongo_url);
+    await mongoClient.connect();
+    const db = mongoClient.db("trading-journal");
+
+    const tradeService = new TradeService(db);
+    tradeService.tradeIdGenerator = new TradeIdGenerator(db);
+    tradeService.orderIdGenerator = new OrderIdGenerator(db);
+    tradeService.tradeFormatter = new TradeFormatter();
+
+    try {
+        return await handler(tradeService);
+    } finally {
+        await mongoClient.close();
+    }
+}
+
+function parseTags(value) {
+    if (!value) {
+        return undefined;
+    }
+
+    const arr = value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+    return arr.length ? arr : undefined;
+}
+
+
+async function createTradeTemplateFile(templateJson, options) {
+    const dt = DateTime.now()
+    const timeStr = dt.toFormat('yyyyMMdd-HHmmss');
+    const filename = `trades-${timeStr}.json`;
+    const filePath = path.join(config.dataDir, filename);
+
+    const defaultTemplate = {
+        accountId: "",
+        symbol: "",
+        direction: "long | short",
+        orders: [
+            {
+                type: 'entry | add | reduce | close',
+                price: null,
+                amount: null,
+                executedAt: dt.toFormat('yyyy-MM-dd HH:mm')
+            }
+        ],
+        multiplier: 1,
+        pnl: null,
+        commission: null,
+        tags: []
+    }
+
+    let userTemplate = {};
+
+    if (templateJson) {
+        try {
+            userTemplate = JSON.parse(templateJson);
+        } catch (e) {
+            throw new Error('Parse template string failed');
+        }
+
+        if (typeof userTemplate !== 'object') {
+            throw new Error('Invalid template');
+        }
+    }
+
+    const finalTemplate = { ...defaultTemplate, ...userTemplate };
+
+    const content = JSON.stringify(finalTemplate, undefined, 4);
+    await fs.writeFile(filePath, content);
+
+    if (options.open) {
+        await open(filePath, { wait: false });
+    }
+}
+
+async function summarize(options) {
+    const {
+        account: accountId,
+        symbol,
+        tags,
+        period,
+        since,
+        until
+    } = options;
+    const timeRange = period ?? { since, until };
+    const filter = { accountId, symbol, tags, timeRange };
+    const summary = await withTradeService(async (tradeService) => {
+        return await tradeService.summarizeTrades(filter);
+    })
+    console.log(JSON.stringify(summary, undefined, 2));
+}
+
+async function list(options) {
+    const {
+        id,
+        account: accountId,
+        symbol,
+        tags,
+        period,
+        since,
+        until,
+        status,
+        limit
+    } = options;
+    const timeRange = period ?? { since, until };
+    const filter = { id, accountId, symbol, tags, status, timeRange, limit };
+    const summary = await withTradeService(async (tradeService) => {
+        return await tradeService.listTrades(filter);
+    })
+    console.log(JSON.stringify(summary, undefined, 2));
+}
+
+async function main() {
+    Settings.defaultZone = config.timezone;
+    Settings.defaultLocale = config.locale;
+
+    program
+        .name("tj")
+        .description("Trading Journal CLI")
+        .version("0.1.0");
+
+    program
+        .command("new")
+        .description("Create a new trade template file in data directory")
+        .argument("[template]", "JSON template string to merge with default template")
+        .option("--no-open", "Do not open the file after creation")
+        .action(createTradeTemplateFile);
+
+    program
+        .command("summarize")
+        .description("Summarize trades")
+        .option("--account <accountId>", "Filter by accountId")
+        .option("--symbol <symbol>", "Filter by symbol")
+        .option("--tags <tags>", "Comma-separated tags, e.g. breakout,binance", parseTags)
+        .option("--period <iso>", "day | week | month")
+        .option("--since <iso>", "Start datetime (ISO format)")
+        .option("--until <iso>", "Start datetime (ISO format)")
+        .action(summarize);
+
+    program
+        .command("list")
+        .description("List trades")
+        .option("--id <tradeId>", "Find a trade by id")
+        .option("--account <accountId>", "Filter by accountId")
+        .option("--symbol <symbol>", "Filter by symbol")
+        .option("--tags <tags>", "Comma-separated tags, e.g. breakout,binance", parseTags)
+        .option("--since <iso>", "Start datetime (ISO format)")
+        .option("--until <iso>", "Start datetime (ISO format)")
+        .option("--period <iso>", "day | week | month")
+        .option("--status <status>", "active | closed")
+        .option("--limit <n>", "Result limit", parseFloat)
+        .action(list);
+
+    await program.parseAsync()
+}
+
+await main();

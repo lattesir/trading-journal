@@ -1,0 +1,34 @@
+[
+    {
+        "name": "crypto",
+        "type": "crypto",
+        "currency": "USD",
+        "initialBalance": 3000,
+        "feeRate": 0.001,
+        "riskPercent": 0.02
+    },
+    {
+        "name": "A-Shares",
+        "type": "stock",
+        "currency": "CNY",
+        "initialBalance": 100000,
+        "feeRate": 0.0005,
+        "riskPercent": 0.02
+    },
+    {
+        "name": "commodities",
+        "type": "commodities",
+        "currency": "CNY",
+        "initialBalance": 50000,
+        "feeRate": 0.0005,
+        "riskPercent": 0.02
+    },
+    {
+        "name": "pm",
+        "type": "pm",
+        "currency": "USD",
+        "initialBalance": 1000,
+        "feeRate": 0.0,
+        "riskPercent": 0.02
+    }
+]

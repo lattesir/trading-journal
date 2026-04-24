@@ -1,0 +1,388 @@
+[
+    {
+        "accountId": "A-03",
+        "symbol": "豆粕2605",
+        "direction": "long",
+        "multiplier": 10,
+        "orders": [
+            {
+                "type": "entry",
+                "price": 3092,
+                "amount": 1,
+                "executedAt": "2026-04-11T13:45:00Z"
+            },
+            {
+                "type": "add",
+                "price": 3079,
+                "amount": 1,
+                "executedAt": "2026-04-11T13:53:00Z"
+            },
+            {
+                "type": "add",
+                "price": 3073,
+                "amount": 1,
+                "executedAt": "2026-04-11T13:57:00Z"
+            },
+            {
+                "type": "add",
+                "price": 3063,
+                "amount": 1,
+                "executedAt": "2026-04-11T14:01:00Z"
+            },
+            {
+                "type": "close",
+                "price": 3051,
+                "amount": 4,
+                "executedAt": "2026-04-11T14:38:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-03",
+        "symbol": "豆粕2605",
+        "direction": "long",
+        "multiplier": 10,
+        "orders": [
+            {
+                "type": "entry",
+                "price": 3084,
+                "amount": 1,
+                "executedAt": "2026-04-12T01:03:00Z"
+            },
+            {
+                "type": "close",
+                "price": 3091,
+                "amount": 1,
+                "executedAt": "2026-04-12T01:20:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "BTC/USDT:USDT",
+        "direction": "short",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 71585,
+                "amount": 0.01,
+                "executedAt": "2026-04-13T07:52:00Z"
+            },
+            {
+                "type": "close",
+                "price": 72050,
+                "amount": 0.01,
+                "executedAt": "2026-04-13T07:53:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "TAG/USDT:USDT",
+        "direction": "long",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.0005708,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T08:31:00Z"
+            },
+            {
+                "type": "close",
+                "price": 0.0005381,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T09:09:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "TAG/USDT:USDT",
+        "direction": "short",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.0005381,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T09:09:00Z"
+            },
+            {
+                "type": "close",
+                "price": 0.0005321,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T09:32:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "TAG/USDT:USDT",
+        "direction": "long",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.0005279,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T09:46:00Z"
+            },
+            {
+                "type": "close",
+                "price": 0.0005299,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T09:49:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "TAG/USDT:USDT",
+        "direction": "long",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.0005233,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T10:09:00Z"
+            },
+            {
+                "type": "close",
+                "price": 0.0005302,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T10:10:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "TAG/USDT:USDT",
+        "direction": "short",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.0005354,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T10:19:00Z"
+            },
+            {
+                "type": "close",
+                "price": 0.0005335,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T10:22:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "TAG/USDT:USDT",
+        "direction": "long",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "amount": 2000000,
+                "executedAt": "2026-04-13T13:19:00Z",
+                "price": 0.0005574
+            },
+            {
+                "type": "add",
+                "price": 0.0005518,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T13:28:00Z"
+            },
+            {
+                "type": "reduce",
+                "price": 0.0005562,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T14:03:00Z"
+            },
+            {
+                "type": "add",
+                "price": 0.0005521,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T14:06:00Z"
+            },
+            {
+                "type": "reduce",
+                "price": 0.0005566,
+                "amount": 8700,
+                "executedAt": "2026-04-13T14:14:00Z"
+            },
+            {
+                "type": "reduce",
+                "price": 0.0005548,
+                "amount": 1991300,
+                "executedAt": "2026-04-13T14:22:00Z"
+            },
+            {
+                "type": "close",
+                "price": 0.0005547,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T14:25:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "TAG/USDT:USDT",
+        "direction": "short",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.0005655,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T14:35:00Z"
+            },
+            {
+                "type": "close",
+                "price": 0.0005625,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T14:38:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "TAG/USDT:USDT",
+        "direction": "short",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.000562,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T15:03:00Z"
+            },
+            {
+                "type": "close",
+                "price": 0.0005598,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T15:04:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "TAG/USDT:USDT",
+        "direction": "short",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.0005656,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T15:13:00Z"
+            },
+            {
+                "type": "close",
+                "price": 0.0005635,
+                "amount": 2000000,
+                "executedAt": "2026-04-13T15:17:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-03",
+        "symbol": "豆粕2605",
+        "direction": "short",
+        "multiplier": 10,
+        "orders": [
+            {
+                "type": "entry",
+                "price": 3059,
+                "amount": 1,
+                "executedAt": "2026-04-16T01:33:00Z"
+            },
+            {
+                "type": "close",
+                "price": 3066,
+                "amount": 1,
+                "executedAt": "2026-04-16T01:38:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-03",
+        "symbol": "豆粕2605",
+        "direction": "short",
+        "multiplier": 10,
+        "orders": [
+            {
+                "type": "entry",
+                "price": 3079,
+                "amount": 1,
+                "executedAt": "2026-04-16T01:45:00Z"
+            },
+            {
+                "type": "close",
+                "price": 3066,
+                "amount": 1,
+                "executedAt": "2026-04-16T01:53:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-04",
+        "symbol": "will-f1-win-best-sound-at-the-98th-academy-awards",
+        "direction": "long",
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.87,
+                "amount": 5,
+                "executedAt": "2026-04-04T12:00:00Z"
+            },
+            {
+                "type": "close",
+                "price": 1.0,
+                "amount": 5,
+                "executedAt": "2026-04-16T04:00:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-04",
+        "symbol": "will-one-battle-after-another-win-best-picture-at-the-98th-academy-awards",
+        "direction": "long",
+        "orders": [
+            {
+                "type": "entry",
+                "price": 0.79,
+                "amount": 5,
+                "executedAt": "2026-04-04T12:00:00Z"
+            },
+            {
+                "type": "close",
+                "price": 1.0,
+                "amount": 5,
+                "executedAt": "2026-04-16T04:00:00Z"
+            }
+        ]
+    },
+    {
+        "accountId": "A-01",
+        "symbol": "BTC/USDT:USDT",
+        "direction": "short",
+        "tags": [ "binance" ],
+        "orders": [
+            {
+                "type": "entry",
+                "price": 75210,
+                "amount": 0.01,
+                "executedAt": "2026-04-17T02:08:00Z"
+            },
+            {
+                "type": "close",
+                "price": 74265,
+                "amount": 0.01,
+                "executedAt": "2026-04-17T05:07:00Z"
+            }
+        ]
+    }
+]
