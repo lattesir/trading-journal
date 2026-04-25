@@ -131,26 +131,30 @@ async function commitTradeStdin(tradeService) {
         throw new Error("No input from stdin");
     }
 
-    const tradeData = JSON.parse(content);
-    const orders = tradeData.orders;
+    const parsed = JSON.parse(content);
+    const trades = Array.isArray(parsed) ? parsed : [ parsed ];
+    trades.forEach((trade, index) => {
+        if (trade.id) {
+            throw new Error(`Trade #${index + 1}: stdin commit only accepts` +
+                            "a complete new trade without id");
+        }
 
-    if (!Array.isArray(orders) || orders.length === 0) {
-        throw new Error("orders must be a non-empty array");
+        const orders = trade.orders;
+        if (!Array.isArray(orders) || orders.length === 0) {
+            throw new Error(`Trade #${index + 1}: orders must be a non-empty array`);
+        }
+
+        const lastOrder = orders[orders.length - 1];
+        if (lastOrder.type !== "close") {
+            throw new Error(`Trade #${index + 1}: stdin commit only accepts` +
+                            "a complete trade whose last order is 'close'");
+        }
+    });
+
+    for (const [index, trade] of trades.entries()) {
+        const tradeDetail = await tradeService.recordTrade(trade);
+        console.log(`Record Trade #${index + 1}: ${tradeDetail.id}`);
     }
-
-    const lastOrder = orders[orders.length - 1];
-
-    if (tradeData.id) {
-        throw new Error("stdin commit only accepts a complete new trade without id");
-    }
-
-    if (lastOrder.type !== "close") {
-        throw new Error("stdin commit only accepts a complete trade whose last order is 'close'");
-    }
-
-    const tradeDetail = await tradeService.recordTrade(tradeData);
-
-    console.log(`Record Trade: ${tradeDetail.id}`);
 }
 
 async function commitTradeFile(tradeService, filePath) {
