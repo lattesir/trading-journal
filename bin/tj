@@ -15,6 +15,16 @@ import { TradeFormatter } from "../src/trade-formatter.js";
 import config from "../tj.config.js";
 
 
+async function readStdin() {
+    const chunks = [];
+
+    for await (const chunk of process.stdin) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+
+    return Buffer.concat(chunks).toString("utf-8");
+}
+
 async function withTradeService(handler) {
     const mongoClient = await createMongoClient(process.env.Mongo_url);
     await mongoClient.connect();
@@ -46,10 +56,10 @@ function parseTags(value) {
 }
 
 
-async function createTradeTemplateFile(templateJson, options) {
+async function draft(templateJson, options) {
     const dt = DateTime.now()
     const timeStr = dt.toFormat('yyyyMMdd-HHmmss');
-    const filename = `trades-${timeStr}.json`;
+    const filename = `draft-${timeStr}.json`;
     const filePath = path.join(config.dataDir, filename);
 
     const defaultTemplate = {
@@ -94,6 +104,11 @@ async function createTradeTemplateFile(templateJson, options) {
 
 async function commit(files) {
     await withTradeService(async (tradeService) => {
+        if (files.length === 0) {
+            await commitTradeStdin(tradeService);
+            return;
+        }
+
         for (const file of files) {
             let filePath = file.endsWith('.json') ? file : `${file}.json`;
             if (!path.isAbsolute(filePath)) {
@@ -107,6 +122,35 @@ async function commit(files) {
             }
         }
     });
+}
+
+async function commitTradeStdin(tradeService) {
+    const content = await readStdin();
+
+    if (!content.trim()) {
+        throw new Error("No input from stdin");
+    }
+
+    const tradeData = JSON.parse(content);
+    const orders = tradeData.orders;
+
+    if (!Array.isArray(orders) || orders.length === 0) {
+        throw new Error("orders must be a non-empty array");
+    }
+
+    const lastOrder = orders[orders.length - 1];
+
+    if (tradeData.id) {
+        throw new Error("stdin commit only accepts a complete new trade without id");
+    }
+
+    if (lastOrder.type !== "close") {
+        throw new Error("stdin commit only accepts a complete trade whose last order is 'close'");
+    }
+
+    const tradeDetail = await tradeService.recordTrade(tradeData);
+
+    console.log(`Record Trade: ${tradeDetail.id}`);
 }
 
 async function commitTradeFile(tradeService, filePath) {
@@ -135,28 +179,25 @@ async function commitTradeFile(tradeService, filePath) {
         if (lastOrder.type === 'close') {
             const tradeDetail = await tradeService.recordTrade(tradeData);
             await fs.unlink(filePath);
-            console.log(`Commit ${fileName}: recorded as ${tradeDetail.id}, file deleted`);
+            console.log(`Record Trade: ${tradeId}. File [${fileName}] deleted.`);
         } else {
             tradeId = await tradeService.openTrade(tradeData);
             tradeData.id = tradeId;
             tradeData.orders = [orderTemplate];
             tradeData.tags = [];
             await fs.writeFile(filePath, JSON.stringify(tradeData, undefined, 4));
-            const dir = path.dirname(filePath);
-            const newFilePath = path.join(dir, `${tradeId}.json`);
-            await fs.rename(filePath, newFilePath);
-            console.log(`Commit ${fileName}: opened as ${tradeId}, renamed to ${path.basename(newFilePath)}`);
+            console.log(`Open Trade: ${tradeId}. File [${fileName}] reset to template.`);
         }
     } else {
         if (lastOrder.type === 'close') {
             await tradeService.closeTrade(tradeId, tradeData);
             await fs.unlink(filePath);
-            console.log(`Commit ${fileName}: trade ${tradeId} closed, file deleted`);
+            console.log(`Close Trade: ${tradeId}. File [${fileName}] deleted.`);
         } else {
             await tradeService.appendOrders(tradeId, orders);
             tradeData.orders = [orderTemplate];
             await fs.writeFile(filePath, JSON.stringify(tradeData, undefined, 4));
-            console.log(`Commit ${fileName}: appended orders, file kept for future updates`);
+            console.log(`Append Orders: ${tradeId}. File [${fileName}] reset to template.`);
         }
     }
 }
@@ -267,16 +308,16 @@ async function main() {
         .version("0.1.0");
 
     program
-        .command("new")
-        .description("Create a local trade file in data directory")
+        .command("draft")
+        .description("Create a local trade draft file in data directory")
         .argument("[templateJson]", "JSON template string to merge with default template")
         .option("--no-open", "Do not open the file after creation")
-        .action(createTradeTemplateFile);
+        .action(draft);
 
     program
         .command("commit")
-        .description("Commit local trade files to storage")
-        .argument("<files...>", "Trade filenames, with or without .json")
+        .description("Commit trade JSON files or stdin")
+        .argument("[files...]", "Trade files, or empty to read from stdin")
         .action(commit);
 
     program
