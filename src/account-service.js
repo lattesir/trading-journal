@@ -4,6 +4,7 @@ export class AccountService {
     constructor(db) {
         this.accountsCollection = db.collection('accounts');
         this.tradesCollection = db.collection('trades');
+        this.countersCollection = db.collection('counters');
     }
 
     async createAccount(input) {
@@ -43,30 +44,34 @@ export class AccountService {
     }
 
     async listAccounts(filter = {}) {
-        const { id, name, type, limit } = schemas.AccountFilter.parse(filter);
+        const { id, name, type } = schemas.AccountFilter.parse(filter);
 
         if (id) {
             const accountDoc = await this.accountsCollection.findOne({ _id: id });
             return accountDoc ? [ this._toAccount(accountDoc) ] : [];
         }
 
-        const query = {};
+        const match = {};
 
         if (name) {
-            query.name = name;
+            match.name = name;
         }
 
         if (type) {
-            query.type = type;
+            match.type = type;
         }
 
         const accountDocs = await this.accountsCollection
-            .find(query)
+            .find(match)
             .sort({ _id: 1 })
-            .limit(limit)
             .toArray();
         
         return accountDocs.map(this._toAccount);
+    }
+
+    async clear() {
+        await this.accountsCollection.deleteMany({});
+        await countersCollection.deleteOne({ _id: "account" });
     }
 
     set idGenerator(value) {

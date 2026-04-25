@@ -136,4 +136,5 @@ ENV/
 playground/
 
 # local data
-data/
+data/*
+!data/.gitkeep

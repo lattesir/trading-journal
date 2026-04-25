@@ -24,7 +24,7 @@ async function withTradeService(handler) {
 async function main() {
     try {
         await withTradeService(async (tradeService) => {
-            await tradeService.deleteAll();
+            await tradeService.clear();
 
             for (const input of tradesData) {
                 const tradeDetail = await tradeService.recordTrade(input);

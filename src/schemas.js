@@ -33,11 +33,10 @@ export const AccountPatch = z.object({
 }).partial();
 
 export const AccountFilter = z.object({
-    id: z.string().optional(),
-    name: z.string().optional(),
-    type: z.string().optional(),
-    limit: z.number().default(100),
-});
+    id: z.string(),
+    name: z.string(),
+    type: z.string()
+}).partial();
 
 const DateLike = z.union([
     z.date(),

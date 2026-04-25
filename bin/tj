@@ -65,8 +65,6 @@ async function createTradeTemplateFile(templateJson, options) {
             }
         ],
         multiplier: 1,
-        pnl: null,
-        commission: null,
         tags: []
     }
 
@@ -99,7 +97,7 @@ async function commit(files) {
         for (const file of files) {
             let filePath = file.endsWith('.json') ? file : `${file}.json`;
             if (!path.isAbsolute(filePath)) {
-                filePath = path.join(config.dataDir, filePath);
+                filePath = path.join(config.dataDir, path.basename(filePath));
             }
 
             try {
@@ -123,35 +121,72 @@ async function commitTradeFile(tradeService, filePath) {
     }
 
     const lastOrder = orders[orders.length - 1];
+
+    const orderTemplate = {
+        type: 'add | reduce | close',
+        price: null,
+        amount: null,
+        executedAt: DateTime.now().toFormat('yyyy-MM-dd HH:mm')
+    }
+
     let tradeId = tradeData.id;
     
     if (!tradeId) {
         if (lastOrder.type === 'close') {
             const tradeDetail = await tradeService.recordTrade(tradeData);
             await fs.unlink(filePath);
-            console.log(`Commit ${filename}: recorded as ${tradeDetail.id}, file deleted`);
+            console.log(`Commit ${fileName}: recorded as ${tradeDetail.id}, file deleted`);
         } else {
             tradeId = await tradeService.openTrade(tradeData);
             tradeData.id = tradeId;
-            tradeData.orders = [];
+            tradeData.orders = [orderTemplate];
+            tradeData.tags = [];
             await fs.writeFile(filePath, JSON.stringify(tradeData, undefined, 4));
             const dir = path.dirname(filePath);
             const newFilePath = path.join(dir, `${tradeId}.json`);
             await fs.rename(filePath, newFilePath);
-            console.log(`Commit ${filename}: opened as ${tradeId}, renamed to ${path.basename(newFilePath)}`);
+            console.log(`Commit ${fileName}: opened as ${tradeId}, renamed to ${path.basename(newFilePath)}`);
         }
     } else {
         if (lastOrder.type === 'close') {
             await tradeService.closeTrade(tradeId, tradeData);
             await fs.unlink(filePath);
-            console.log(`Commit ${filename}: trade ${tradeId} closed, file deleted`);
+            console.log(`Commit ${fileName}: trade ${tradeId} closed, file deleted`);
         } else {
             await tradeService.appendOrders(tradeId, orders);
-            tradeData.orders = [];
+            tradeData.orders = [orderTemplate];
             await fs.writeFile(filePath, JSON.stringify(tradeData, undefined, 4));
-            console.log(`Commit ${filename}: appended orders, file kept for future updates`);
+            console.log(`Commit ${fileName}: appended orders, file kept for future updates`);
         }
     }
+}
+
+async function updateTags(tradeId, tags, options) {
+    const tagsAfterUpdate = await withTradeService(async (tradeService) => {
+        return await tradeService.updateTags(tradeId, tags, options.set ? false : true);
+    });
+
+    console.log(`Tags after update: ${JSON.stringify(tagsAfterUpdate)}`);
+}
+
+async function list(options) {
+    const {
+        id,
+        account: accountId,
+        symbol,
+        tags,
+        period,
+        since,
+        until,
+        status,
+        limit
+    } = options;
+    const timeRange = period ?? { since, until };
+    const filter = { id, accountId, symbol, tags, status, timeRange, limit };
+    const summary = await withTradeService(async (tradeService) => {
+        return await tradeService.listTrades(filter);
+    });
+    console.log(JSON.stringify(summary, undefined, 2));
 }
 
 async function summarize(options) {
@@ -171,24 +206,11 @@ async function summarize(options) {
     console.log(JSON.stringify(summary, undefined, 2));
 }
 
-async function list(options) {
-    const {
-        id,
-        account: accountId,
-        symbol,
-        tags,
-        period,
-        since,
-        until,
-        status,
-        limit
-    } = options;
-    const timeRange = period ?? { since, until };
-    const filter = { id, accountId, symbol, tags, status, timeRange, limit };
-    const summary = await withTradeService(async (tradeService) => {
-        return await tradeService.listTrades(filter);
-    })
-    console.log(JSON.stringify(summary, undefined, 2));
+async function showDetail(tradeId) {
+    const tradeDetail = await withTradeService(async (tradeService) => {
+        return await tradeService.showTradeDetail(tradeId);
+    });
+    console.log(JSON.stringify(tradeDetail, undefined, 4));
 }
 
 async function clear(options) {
@@ -210,10 +232,29 @@ async function clear(options) {
         return;
     }
 
-    await withTradeService(async (tradeService) => {
-        const deletedCount = await tradeService.deleteAll()
-        console.log(`Deleted ${deletedCount} trade(s)`)
+    const deletedCount = await withTradeService(async (tradeService) => {
+        return await tradeService.clear();
     });
+    console.log(`Deleted ${deletedCount} trade(s)`);
+}
+
+async function deleteTrades(options) {
+    const {
+        id,
+        account: accountId,
+        symbol,
+        tags,
+        period,
+        since,
+        until,
+        status,
+    } = options;
+    const timeRange = period ?? { since, until };
+    const filter = { id, accountId, symbol, tags, timeRange, status };
+    const deletedCount = await withTradeService(async (tradeService) => {
+        return await tradeService.deleteTrades(filter);
+    });
+    console.log(`Deleted ${deletedCount} trade(s)`);
 }
 
 async function main() {
@@ -227,46 +268,73 @@ async function main() {
 
     program
         .command("new")
-        .description("Create a new trade template file in data directory")
-        .argument("[template]", "JSON template string to merge with default template")
+        .description("Create a local trade file in data directory")
+        .argument("[templateJson]", "JSON template string to merge with default template")
         .option("--no-open", "Do not open the file after creation")
         .action(createTradeTemplateFile);
 
     program
         .command("commit")
-        .description("Commit trade JSON files from data directory")
+        .description("Commit local trade files to storage")
         .argument("<files...>", "Trade filenames, with or without .json")
         .action(commit);
 
     program
-        .command("summarize")
-        .description("Summarize trades")
-        .option("--account <accountId>", "Filter by accountId")
-        .option("--symbol <symbol>", "Filter by symbol")
+        .command("tags")
+        .description("Update tags of a closed trade")
+        .argument("<tradeId>", "Trade ID")
+        .argument("<tags...>", "Tags to set or merge")
+        .option("--set", "Replace existing tags instead of merging")
+        .action(updateTags);
+
+    program
+        .command("clear")
+        .description("Reset the journal by clearing all trades and ID counters")
+        .action(clear);
+
+    program
+        .command("delete")
+        .description("Delete trades based on filters")
+        .option("--id <tradeId>", "Specific trade ID to delete")
+        .option("--account <accountId>", "Filter by account ID")
+        .option("--symbol <symbol>", "Filter by symbol (e.g. BTCUSDT, AAPL)")
         .option("--tags <tags>", "Comma-separated tags, e.g. breakout,binance", parseTags)
-        .option("--period <iso>", "day | week | month")
-        .option("--since <iso>", "Start datetime (ISO format)")
-        .option("--until <iso>", "Start datetime (ISO format)")
-        .action(summarize);
+        .option("--since <iso>", "Start date in ISO format")
+        .option("--until <iso>", "End date in ISO format")
+        .option("--period <iso>", "Filter by timeframe: day | week | month")
+        .option("--status <status>", "Filter by status: active | closed")
+        .action(deleteTrades);
 
     program
         .command("list")
-        .description("List trades")
-        .option("--id <tradeId>", "Find a trade by id")
-        .option("--account <accountId>", "Filter by accountId")
-        .option("--symbol <symbol>", "Filter by symbol")
+        .description("List trades based on filters")
+        .option("--id <tradeId>", "Specific trade ID to list")
+        .option("--account <accountId>", "Filter by account ID")
+        .option("--symbol <symbol>", "Filter by symbol (e.g. BTCUSDT, AAPL)")
         .option("--tags <tags>", "Comma-separated tags, e.g. breakout,binance", parseTags)
-        .option("--since <iso>", "Start datetime (ISO format)")
-        .option("--until <iso>", "Start datetime (ISO format)")
-        .option("--period <iso>", "day | week | month")
-        .option("--status <status>", "active | closed")
+        .option("--since <iso>", "Start date in ISO format")
+        .option("--until <iso>", "End date in ISO format")
+        .option("--period <iso>", "Filter by timeframe: day | week | month")
+        .option("--status <status>", "Filter by status: active | closed")
         .option("--limit <n>", "Result limit", parseFloat)
         .action(list);
 
     program
-        .command('clear')
-        .description('Clear all trade records')
-        .action(clear);
+        .command("summarize")
+        .description("Summarize trades based on filters")
+        .option("--account <accountId>", "Filter by account ID")
+        .option("--symbol <symbol>", "Filter by symbol (e.g. BTCUSDT, AAPL)")
+        .option("--tags <tags>", "Comma-separated tags, e.g. breakout,binance", parseTags)
+        .option("--since <iso>", "Start date in ISO format")
+        .option("--until <iso>", "End date in ISO format")
+        .option("--period <iso>", "Filter by timeframe: day | week | month")
+        .action(summarize);
+
+    program
+        .command("show")
+        .description("Show trade detail")
+        .argument("<tradeId>", "ID of the trade to display")
+        .action(showDetail);
 
     await program.parseAsync()
 }

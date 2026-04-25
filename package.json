@@ -7,6 +7,9 @@
     "node": ">=22.0.0"
   },
   "main": "index.js",
+  "bin": {
+      "tj": "bin/tj"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

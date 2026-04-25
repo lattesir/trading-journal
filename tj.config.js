@@ -9,5 +9,5 @@ export default {
     timezone: "Asia/Shanghai",
     locale: "zh-CN",
 
-    dataDir: path.join(rootDir, 'data')
+    dataDir: path.join(rootDir, 'data'),
 }

@@ -5,35 +5,33 @@ import { AccountIdGenerator } from "../src/id-gen.js";
 import accountsData from '../seeds/accounts.json' with { type: 'json' };
 
 
-async function reset(db) {
-    const accountsCollection = db.collection('accounts');
-    const countersCollection = db.collection('counters');
-    
-    await accountsCollection.deleteMany({});
-    await countersCollection.deleteOne({ _id: "account" });
-}
+async function withAccountService(handler) {
+    const mongoClient = await createMongoClient(process.env.Mongo_url);
+    await mongoClient.connect();
+    const db = mongoClient.db("trading-journal");
 
-async function importAccounts(db) {
     const accountService = new AccountService(db);
     accountService.idGenerator = new AccountIdGenerator(db);
-    for (const input of accountsData) {
-        const accountId = await accountService.createAccount(input);
-        console.log(`Create account ${accountId}: ${input.name}`);
+
+    try {
+        return await handler(accountService);
+    } finally {
+        await mongoClient.close();
     }
 }
 
 async function main() {
-    const client = await createMongoClient(process.env.Mongo_url);
-    await client.connect();
-    const db = client.db("trading-journal");
-
     try{
-        await reset(db);
-        await importAccounts(db);
+        await withAccountService(async (accountService) => {
+            await accountService.clear();
+
+            for (const input of accountsData) {
+                const account = await accountService.createAccount(input);
+                console.log(`Create account: ${account.id}`);
+            }
+        });
     } catch (e) {
-        console.log(e);
-    } finally {
-        await client.close();
+        console.error(e);
     }
 }
 

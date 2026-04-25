@@ -202,29 +202,135 @@ export class TradeService {
         return tags;
     }
 
-    async deleteTradeById(tradeId) {
-        const { deletedCount } = await this.tradesCollection.deleteOne({ _id: tradeId });
-        return deletedCount === 1;
-    }
-
-    async deleteTradesByAccountId(accountId) {
-        const { deletedCount } = await this.tradesCollection.deleteMany({ accountId });
-        return deletedCount;
-    }
-
-    async deleteAll() {
+    async clear() {
         const { deletedCount } = await this.tradesCollection.deleteMany({});
         await this.countersCollection.deleteMany({ _id: /^[TO]-/ });
         return deletedCount;
     }
 
-    async showTradeDetail(tradeId) {
-        const tradeDoc = await this.tradesCollection.findOne({ _id: tradeId });
-        if (!tradeDoc) {
-            throw new Error(`Trade ${tradeId} not found`);
+    async deleteTrades(filter) {
+        const {
+            id,
+            accountId,
+            symbol,
+            tags,
+            status = 'closed',
+            timeRange,
+        } = schemas.TradeFilter.parse(filter);
+
+        if (id) {
+            const { deletedCount } = await this.tradesCollection.deleteOne({ _id: id });
+            return deletedCount;
         }
 
-        return this._toTradeDetail(tradeDoc);
+        const match = {};
+
+        if (accountId) {
+            match.accountId = accountId;
+        }
+
+        if (symbol) {
+            match.symbol = symbol;
+        }
+
+        if (tags) {
+            match.tags = { $all: tags };
+        }
+
+        if (status === 'active') {
+            match.endTime = { $exists: false };
+        } else {
+            match.endTime = { $exists: true };
+
+            if (timeRange?.since) {
+                match.endTime.$gte = timeRange.since;
+            }
+
+            if (timeRange?.until) {
+                match.endTime.$lte = timeRange.until;
+            }
+        }
+
+        const { deletedCount } = await this.tradesCollection.deleteMany(match);
+        await this.countersCollection.deleteMany({ _id: /^[TO]-/ });
+        return deletedCount;
+    }
+
+    async listTrades(filter = {}) {
+        const {
+            id,
+            accountId,
+            symbol,
+            tags,
+            status = 'closed',
+            timeRange,
+            limit = 1000
+        } = schemas.TradeFilter.parse(filter);
+
+        if (id) {
+            const tradeDoc = await this.tradesCollection.findOne(
+                { _id: id },
+                { projection: { orders: false } }
+            );
+
+            if (!tradeDoc) {
+                return [];
+            } else if (tradeDoc.endTime) {
+                return [ this._toClosedTrade(tradeDoc) ];
+            } else {
+                return [ this._toActiveTrade(tradeDoc) ];
+            }
+        }
+
+        const match = {};
+
+        if (accountId) {
+            match.accountId = accountId;
+        }
+
+        if (symbol) {
+            match.symbol = symbol;
+        }
+
+        if (tags) {
+            match.tags = { $all: tags };
+        }
+
+        if (status === 'active') {
+            match.endTime = { $exists: false };
+            
+            const tradeDocs = await this.tradesCollection
+                .find(query, { projection: { orders: false } })
+                .limit(limit)
+                .toArray();
+
+            return tradeDocs.map(this._toActiveTrade);
+
+        } else {
+            match.endTime = { $exists: true };
+
+            if (timeRange?.since) {
+                match.endTime.$gte = timeRange.since;
+            }
+
+            if (timeRange?.until) {
+                match.endTime.$lte = timeRange.until;
+            }
+
+            const tradeDocs = await this.tradesCollection
+                .find(match, { projection: { orders: false } })
+                .sort({ endTime: -1 })
+                .limit(limit)
+                .toArray();
+
+            const trades = tradeDocs.map(this._toClosedTrade);
+            
+            if (this.tradeFormatter) {
+                return trades.map((trade) => this.tradeFormatter.format(trade));
+            } else {
+                return trades;
+            }
+        }
     }
 
     async summarizeTrades(filter = {}) {
@@ -308,90 +414,13 @@ export class TradeService {
         return result;
     }
 
-    async listActiveTrades() {
-        return await this.listTrades({ status: 'active' });
-    }
-
-    async listRecentTrades(filter = {}) {
-        const { accountId, symbol, tags, limit = 3 } = schemas.TradeFilter.parse(filter);
-        return await this.listTrades({ accountId, symbol, tags, limit });
-    }
-
-    async listTrades(filter = {}) {
-        const {
-            id,
-            accountId,
-            symbol,
-            tags,
-            status,
-            timeRange,
-            limit = 1000
-        } = schemas.TradeFilter.parse(filter);
-
-        if (id) {
-            const tradeDoc = await this.tradesCollection.findOne(
-                { _id: id },
-                { projection: { orders: false } }
-            );
-
-            if (!tradeDoc) {
-                return [];
-            } else if (tradeDoc.endTime) {
-                return [ this._toClosedTrade(tradeDoc) ];
-            } else {
-                return [ this._toActiveTrade(tradeDoc) ];
-            }
+    async showTradeDetail(tradeId) {
+        const tradeDoc = await this.tradesCollection.findOne({ _id: tradeId });
+        if (!tradeDoc) {
+            throw new Error(`Trade ${tradeId} not found`);
         }
 
-        const query = {};
-
-        if (accountId) {
-            query.accountId = accountId;
-        }
-
-        if (symbol) {
-            query.symbol = symbol;
-        }
-
-        if (tags) {
-            query.tags = { $all: tags };
-        }
-
-        if (status === 'active') {
-            query.endTime = { $exists: false };
-            
-            const tradeDocs = await this.tradesCollection
-                .find(query, { projection: { orders: false } })
-                .limit(limit)
-                .toArray();
-
-            return tradeDocs.map(this._toActiveTrade);
-
-        } else {
-            query.endTime = { $exists: true };
-
-            if (timeRange?.since) {
-                query.endTime.$gte = timeRange.since;
-            }
-
-            if (timeRange?.until) {
-                query.endTime.$lte = timeRange.until;
-            }
-
-            const tradeDocs = await this.tradesCollection
-                .find(query, { projection: { orders: false } })
-                .sort({ endTime: -1 })
-                .limit(limit)
-                .toArray();
-
-            const trades = tradeDocs.map(this._toClosedTrade);
-            
-            if (this.tradeFormatter) {
-                return trades.map((trade) => this.tradeFormatter.format(trade));
-            } else {
-                return trades;
-            }
-        }
+        return this._toTradeDetail(tradeDoc);
     }
 
     set tradeIdGenerator(value) {
