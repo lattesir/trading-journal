@@ -9,15 +9,15 @@ import * as schemas from "../src/schemas.js";
 
 
 async function withAccountService(handler) {
-    const mongoClient = await createMongoClient(process.env.Mongo_url);
-    await mongoClient.connect();
-    const db = mongoClient.db("trading-journal");
+    const client = await createMongoClient(process.env.Mongo_url);
+    await client.connect();
+    const db = client.db("trading-journal");
     const accountService = new AccountService(db);
 
     try {
         return await handler(accountService);
     } finally {
-        await mongoClient.close();
+        await client.close();
     }
 }
 

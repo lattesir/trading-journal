@@ -26,6 +26,7 @@ export class TradeService {
         await this._assignOrderIds(tradeDoc.orders, tradeId);
 
         await this.tradesCollection.insertOne(tradeDoc);
+        await this._deleteOrderIdCounter(tradeId);
         return this._toTradeDetail(tradeDoc);
     }
 
@@ -96,6 +97,7 @@ export class TradeService {
         this._closeTrade(tradeDoc);
 
         await this.tradesCollection.replaceOne({ _id: tradeId }, tradeDoc);
+        await this._deleteOrderIdCounter(tradeId);
         return this._toTradeDetail(tradeDoc);
     }
 
@@ -202,9 +204,12 @@ export class TradeService {
         return tags;
     }
 
-    async clear() {
+    async purge(onlyTrades = false) {
+        if (!onlyTrades) {
+            await this.accountsCollection.deleteMany({});
+        }
+
         await this.countersCollection.deleteMany({});
-        await this.accountsCollection.deleteMany({});
         const { deletedCount } = await this.tradesCollection.deleteMany({});
         return deletedCount;
     }
@@ -425,6 +430,121 @@ export class TradeService {
         return this._toTradeDetail(tradeDoc);
     }
 
+    async importTrades(data, onlyTrades = false) {
+        const { accounts, trades, counters } = data;
+
+        if (!Array.isArray(trades) || !trades.length) {
+            throw new Error('Import failed: No trade records found in the provided data.');
+        }
+
+        const upsertTradeOps = trades.map(({ id, ...rest }) => ({
+            replaceOne: {
+                filter: { _id: id },
+                replacement: { _id: id, ...rest },
+                upsert: true
+            }
+        }));
+
+        await this.tradesCollection.bulkWrite(upsertTradeOps);
+
+        if (!onlyTrades) {
+            const upsertAccountOps = accounts.map(({ id, ...rest }) => ({
+                replaceOne: {
+                    filter: { _id: id },
+                    replacement: { _id: id, ...rest },
+                    upsert: true
+                }
+            }));
+
+            await this.accountsCollection.bulkWrite(upsertAccountOps);
+
+            const upsertCounterOps = counters.map(({ id, ...rest }) => ({
+                replaceOne: {
+                    filter: { _id: id },
+                    replacement: { _id: id, ...rest },
+                    upsert: true
+                }
+            }));
+
+            await this.countersCollection.bulkWrite(upsertCounterOps);
+        }
+
+        return trades.length;
+    }
+
+    async exportTrades(filter = {}, onlyTrades = false) {
+        const {
+            accountId,
+            symbol,
+            tags,
+            timeRange,
+        } = schemas.TradeFilter.parse(filter);
+
+        const match = {};
+
+        if (accountId) {
+            match.accountId = accountId;
+        }
+
+        if (symbol) {
+            match.symbol = symbol;
+        }
+
+        if (tags) {
+            match.tags = { $all: tags };
+        }
+
+        match.endTime = { $exists: true };
+
+        if (timeRange?.since) {
+            match.endTime.$gte = timeRange.since;
+        }
+
+        if (timeRange?.until) {
+            match.endTime.$lte = timeRange.until;
+        }
+
+        const tradeDocs = await this.tradesCollection
+            .find(match)
+            .sort({ _id: 1})
+            .toArray();
+
+        const trades = tradeDocs.map(this._toTradeDetail);
+
+        if (onlyTrades) {
+            return trades;
+        }
+
+        const counterIds = new Set();
+        const accountIds = new Set();
+
+        for (const trade of trades) {
+            const dateStr = trade.id.split('-')[1];
+            counterIds.add(`T-${dateStr}`);
+            accountIds.add(trade.accountId);
+        }
+
+        const counterDocs = await this.countersCollection
+            .find({ _id: /^T-/ })
+            .sort({ _id: 1 })
+            .toArray();
+
+        const counters = counterDocs
+            .filter(({ _id }) => counterIds.has(_id))
+            .map(({ _id, seq }) => ({ id: _id, seq }));
+
+        const accountDocs = await this.accountsCollection
+            .find({})
+            .sort({ _id: 1 })
+            .toArray();
+
+        const accounts = accountDocs
+            .filter(({ _id }) => accountIds.has(_id))
+            .map(({ _id, ...account }) => ({ id: _id, ...account }));
+
+        return { accounts, trades, counters };
+    }
+
     set tradeIdGenerator(value) {
         this._tradeIdGenerator = value;
     }
@@ -452,6 +572,11 @@ export class TradeService {
             const orderId = await this.orderIdGenerator.next(tradeId);
             order._id = orderId;
         }
+    }
+
+    async _deleteOrderIdCounter(tradeId) {
+        const _id = this.orderIdGenerator.getOrderIdPrefix(tradeId);
+        await this.countersCollection.deleteOne({ _id });
     }
 
     _validateTradeOrders(orders) {
@@ -501,8 +626,12 @@ export class TradeService {
     }
 
     _toTradeDetail(tradeDoc) {
-        const { _id, ...rest } = tradeDoc;
-        return { id: _id, ...rest };
+        const { _id, orders, ...rest } = tradeDoc;
+        return {
+            id: _id,
+            orders: orders.map(({ _id, ...order }) => ({ id: _id, ...order })),
+            ...rest
+        };
     }
 
     _toClosedTrade(tradeDoc) {

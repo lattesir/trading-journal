@@ -3,8 +3,6 @@
 import "dotenv/config";
 import fs from "fs/promises";
 import path from "path";
-import readline from "readline/promises";
-
 import open from "open";
 import { program } from "commander";
 import { DateTime, Settings } from "luxon";
@@ -26,9 +24,9 @@ async function readStdin() {
 }
 
 async function withTradeService(handler) {
-    const mongoClient = await createMongoClient(process.env.Mongo_url);
-    await mongoClient.connect();
-    const db = mongoClient.db("trading-journal");
+    const client = await createMongoClient(process.env.Mongo_url);
+    await client.connect();
+    const db = client.db("trading-journal");
 
     const tradeService = new TradeService(db);
     tradeService.tradeIdGenerator = new TradeIdGenerator(db);
@@ -38,7 +36,7 @@ async function withTradeService(handler) {
     try {
         return await handler(tradeService);
     } finally {
-        await mongoClient.close();
+        await client.close();
     }
 }
 
@@ -263,26 +261,8 @@ async function showDetail(tradeId) {
 }
 
 async function purge(options) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-
-    let answer;
-    try {
-        const message = 'This will PURGE the entire journal database. Continue? [y|n]:'
-        answer = await rl.question(message);
-    } finally {
-        rl.close();
-    }
-
-    if (answer !== 'y') {
-        console.log('Cancelled. Database remains intact.');
-        return;
-    }
-
     const deletedCount = await withTradeService(async (tradeService) => {
-        return await tradeService.clear();
+        return await tradeService.purge(options.onlyTrades);
     });
     console.log(`Deleted ${deletedCount} trade(s)`);
 }
@@ -304,6 +284,39 @@ async function deleteTrades(options) {
         return await tradeService.deleteTrades(filter);
     });
     console.log(`Deleted ${deletedCount} trade(s)`);
+}
+
+async function importTrades(file, options) {
+    const content = file ? await fs.readFile(file, "utf-8") : await readStdin();
+    const trimmed = content.trim();
+    
+    if (!trimmed) {
+        throw new Error('No input provided for import.');
+    }
+
+    const data = JSON.parse(trimmed);
+
+    const upsertTradeCount = await withTradeService(async (tradeService) => {
+        return await tradeService.importTrades(data, options.onlyTrades);
+    });
+    console.log(`Imported ${upsertTradeCount} trade(s)`);
+}
+
+async function exportTrades(options) {
+    const {
+        account: accountId,
+        symbol,
+        tags,
+        period,
+        since,
+        until
+    } = options;
+    const timeRange = period ?? { since, until };
+    const filter = { accountId, symbol, tags, timeRange };
+    const data = await withTradeService(async (tradeService) => {
+        return await tradeService.exportTrades(filter, options.onlyTrades);
+    });
+    console.log(JSON.stringify(data, undefined, 2));
 }
 
 async function main() {
@@ -338,7 +351,8 @@ async function main() {
 
     program
         .command("purge")
-        .description("Reset the journal by purging all collections")
+        .description("Reset the journal by purging collections")
+        .option("--only-trades", "only purge trades and counters, keeping accounts intact")
         .action(purge);
 
     program
@@ -384,6 +398,25 @@ async function main() {
         .description("Show trade detail")
         .argument("<tradeId>", "ID of the trade to display")
         .action(showDetail);
+
+    program
+        .command("import")
+        .description("Import trades from JSON file or stdin")
+        .argument("[file]", "Optional JSON file path, otherwise read from stdin")
+        .option("--only-trades", "Only import trades data")
+        .action(importTrades);
+
+    program
+        .command("export")
+        .description("Export trades to stdout")
+        .option("--account <accountId>", "Filter by account ID")
+        .option("--symbol <symbol>", "Filter by symbol, e.g. BTCUSDT, AAPL")
+        .option("--tags <tags>", "Comma-separated tags, e.g. breakout,binance", parseTags)
+        .option("--since <iso>", "Start date in ISO format")
+        .option("--until <iso>", "End date in ISO format")
+        .option("--period <period>", "Filter by timeframe: day | week | month")
+        .option("--only-trades", "Only export trades data")
+        .action(exportTrades);
 
     await program.parseAsync()
 }

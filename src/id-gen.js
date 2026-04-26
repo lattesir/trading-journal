@@ -52,10 +52,10 @@ export class OrderIdGenerator {
     }
 
     async next(tradeId) {
-        const id = `O-${tradeId.slice(2)}`;
+        const prefix = this.getOrderIdPrefix(tradeId);
 
         const { seq } = await this.collection.findOneAndUpdate(
-            { _id: id },
+            { _id: prefix },
             { $inc: { seq: 1 } },
             { 
                 upsert: true,
@@ -63,6 +63,10 @@ export class OrderIdGenerator {
             }
         );
 
-        return `${id}-${String(seq).padStart(2, '0')}`
+        return `${prefix}-${String(seq).padStart(2, '0')}`
+    }
+
+    getOrderIdPrefix(tradeId) {
+        return `O-${tradeId.slice(2)}`;
     }
 }
