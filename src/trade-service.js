@@ -203,8 +203,9 @@ export class TradeService {
     }
 
     async clear() {
+        await this.countersCollection.deleteMany({});
+        await this.accountsCollection.deleteMany({});
         const { deletedCount } = await this.tradesCollection.deleteMany({});
-        await this.countersCollection.deleteMany({ _id: /^[TO]-/ });
         return deletedCount;
     }
 

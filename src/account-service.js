@@ -4,32 +4,60 @@ export class AccountService {
     constructor(db) {
         this.accountsCollection = db.collection('accounts');
         this.tradesCollection = db.collection('trades');
-        this.countersCollection = db.collection('counters');
     }
 
-    async createAccount(input) {
-        const accountDoc = schemas.AccountCreateInput.parse(input);
-        accountDoc._id = await this.idGenerator.next();
-        await this.accountsCollection.insertOne(accountDoc);
-        return accountDoc._id;
-    }
+    async save(input) {
+        const {
+            id,
+            name,
+            type,
+            currency,
+            initialBalance,
+            feeRate,
+            riskPercent
+        } = schemas.Account.parse(input);
 
-    async updateAccount(accountId, patch) {
-        const patchDoc = schemas.AccountPatch.parse(patch);
-        const accountDoc = await this.accountsCollection.findOneAndUpdate(
-            { _id: accountId },
-            { $set: patchDoc },
-            { returnDocument: 'after' }
-        )
-
-        if (!accountDoc) {
-            throw new Error(`Account '${accountId}' not found`);
+        if (!id) {
+            throw new Error("Account 'id' is required");
         }
 
-        return this._toAccount(accountDoc);
+        let doc;
+
+        const existing = await this.accountsCollection.findOne({ _id: id });
+
+        if (existing) {
+            doc = {
+                _id: id,
+                name: name ?? existing.name,
+                type: type ?? existing.type,
+                currency: currency ?? existing.currency,
+                initialBalance: initialBalance ?? existing.initialBalance,
+                feeRate: feeRate ?? existing.feeRate,
+                riskPercent: riskPercent ?? existing.riskPercent
+            }
+        } else {
+            Object.entries({ name, type, currency }).forEach(([ field, value ]) => {
+                if (!value) {
+                    throw new Error(`Field '${field}' is required when creating account`);
+                }
+            });
+
+            doc = {
+                _id: id,
+                name,
+                type,
+                currency,
+                initialBalance: initialBalance ?? 10000,
+                feeRate: feeRate ?? 0.0,
+                riskPercent: riskPercent ?? 0.02
+            }
+        }
+
+        await this.accountsCollection.replaceOne({ _id: id }, doc, { upsert: true });
+        return this._toAccount(doc);
     }
 
-    async deleteAccount(accountId) {
+    async delete(accountId) {
         const associatedTrade = await this.tradesCollection.findOne(
             { accountId },
             { projection: { _id: true } }
@@ -43,12 +71,12 @@ export class AccountService {
         return deletedCount === 1;
     }
 
-    async listAccounts(filter = {}) {
+    async list(filter = {}) {
         const { id, name, type } = schemas.AccountFilter.parse(filter);
 
         if (id) {
-            const accountDoc = await this.accountsCollection.findOne({ _id: id });
-            return accountDoc ? [ this._toAccount(accountDoc) ] : [];
+            const doc = await this.accountsCollection.findOne({ _id: id });
+            return doc ? [ this._toAccount(doc) ] : [];
         }
 
         const match = {};
@@ -61,28 +89,12 @@ export class AccountService {
             match.type = type;
         }
 
-        const accountDocs = await this.accountsCollection
+        const docs = await this.accountsCollection
             .find(match)
             .sort({ _id: 1 })
             .toArray();
         
-        return accountDocs.map(this._toAccount);
-    }
-
-    async clear() {
-        await this.accountsCollection.deleteMany({});
-        await countersCollection.deleteOne({ _id: "account" });
-    }
-
-    set idGenerator(value) {
-        this._idGenerator = value;
-    }
-
-    get idGenerator() {
-        if (!this._idGenerator) {
-            throw new Error(`idGenerator is missing.`);
-        }
-        return this._idGenerator;
+        return docs.map(this._toAccount);
     }
 
     _toAccount(accountDoc) {

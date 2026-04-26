@@ -1,5 +1,6 @@
 [
     {
+        "id": "A-01",
         "name": "crypto",
         "type": "crypto",
         "currency": "USD",
@@ -8,6 +9,7 @@
         "riskPercent": 0.02
     },
     {
+        "id": "A-02",
         "name": "A-Shares",
         "type": "stock",
         "currency": "CNY",
@@ -16,6 +18,7 @@
         "riskPercent": 0.02
     },
     {
+        "id": "A-03",
         "name": "commodities",
         "type": "commodities",
         "currency": "CNY",
@@ -24,6 +27,7 @@
         "riskPercent": 0.02
     },
     {
+        "id": "A-04",
         "name": "pm",
         "type": "pm",
         "currency": "USD",

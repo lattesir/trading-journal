@@ -1,8 +1,9 @@
 import * as z from "zod";
 import { DateTime } from "luxon";
 
-export const AccountDoc = z.object({
-    _id: z.string().describe("Unique identifier of the account"),
+export const Account = z.object({
+    id: z.string()
+        .describe("Unique identifier of the account"),
 
     name: z.string()
         .describe("Display name of the account"),
@@ -13,23 +14,14 @@ export const AccountDoc = z.object({
     currency: z.string()
         .describe("Base currency of the account, e.g. USD or CNY"),
 
-    initialBalance: z.number().gt(0).default(10000)
+    initialBalance: z.number()
         .describe("Initial balance of the account"),
 
-    feeRate: z.number().min(0).lt(1).default(0.0)
+    feeRate: z.number()
         .describe("Default fee rate as a decimal"),
 
-    riskPercent: z.number().gt(0).lt(1).default(0.02)
+    riskPercent: z.number()
         .describe("Risk percentage used to determine a trade's risk when not specified")
-});
-
-export const AccountCreateInput = AccountDoc.omit({ _id: true });
-
-export const AccountPatch = z.object({
-    name: z.string(),
-    initialBalance: z.number().gt(0),
-    feeRate: z.number().min(0).lt(1),
-    riskPercent: z.number().gt(0).lt(1)
 }).partial();
 
 export const AccountFilter = z.object({

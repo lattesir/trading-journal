@@ -8,7 +8,8 @@
   },
   "main": "index.js",
   "bin": {
-      "tj": "bin/tj"
+      "tj": "bin/tj",
+      "tj-acct": "bin/tj-acct"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
