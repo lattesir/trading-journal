@@ -276,7 +276,8 @@ export class TradeService {
             if (!tradeDoc) {
                 return [];
             } else if (tradeDoc.endTime) {
-                return [ this._toClosedTrade(tradeDoc) ];
+                const trade = this._toClosedTrade(tradeDoc);
+                return [ this.tradeFormatter?.format(trade) ?? trade ];
             } else {
                 return [ this._toActiveTrade(tradeDoc) ];
             }
@@ -323,13 +324,10 @@ export class TradeService {
                 .limit(limit)
                 .toArray();
 
-            const trades = tradeDocs.map(this._toClosedTrade);
-            
-            if (this.tradeFormatter) {
-                return trades.map((trade) => this.tradeFormatter.format(trade));
-            } else {
-                return trades;
-            }
+            return tradeDocs.map((tradeDoc) => {
+                const trade = this._toClosedTrade(tradeDoc);
+                return this.tradeFormatter?.format(trade) ?? trade;
+            });
         }
     }
 
@@ -399,8 +397,11 @@ export class TradeService {
 
         for (const { _id: groupId, ...r } of aggregated) {
             const winRate = r.winningTrades / r.totalTrades;
-            const profitFactor = r.totalLoss ? r.totalProfit / r.totalLoss : NaN;
-            const summary = { ...r, winRate, profitFactor };
+            const avgProfit = r.winningTrades ? r.totalProfit / r.winningTrades : undefined;
+            const avgLoss = r.losingTrades ? Math.abs(r.totalLoss) / r.losingTrades : undefined;
+            const payoffRatio = (avgProfit && avgLoss) ? avgProfit / avgLoss : undefined;
+            const profitFactor = r.totalLoss ? r.totalProfit / r.totalLoss : undefined;
+            const summary = { ...r, winRate, payoffRatio, profitFactor };
             const formattedSummary = this.tradeFormatter?.formatSummary(summary) ?? summary;
             
             if (groupId) {
