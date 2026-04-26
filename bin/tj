@@ -111,7 +111,7 @@ async function commit(files) {
             try {
                 await commitTradeFile(tradeService, file);
             } catch (e) {
-                console.error(`Commit ${file} error: ${e.message}`);
+                console.error(`Commit ${file} error: ${e}`);
             }
         }
     });
@@ -192,7 +192,7 @@ async function commitTradeFile(tradeService, file) {
             tradeData.orders = [orderTemplate];
             tradeData.tags = [];
             await fs.writeFile(filePath, JSON.stringify(tradeData, undefined, 4));
-            console.log(`Open Trade: ${tradeDetail.id}. File '${fileName}' reset to template.`);
+            console.log(`Open Trade: ${tradeId}. File '${fileName}' reset to template.`);
         }
     } else {
         if (lastOrder.type === 'close') {
