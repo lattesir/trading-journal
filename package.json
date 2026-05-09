@@ -9,11 +9,7 @@
   "main": "index.js",
   "bin": {
     "tj": "bin/tj",
-    "tj-acct": "bin/tj-acct",
-    "tj-parse": "bin/tj-parse"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "tj-acct": "bin/tj-acct"
   },
   "dependencies": {
     "@langchain/core": "^1.1.45",
