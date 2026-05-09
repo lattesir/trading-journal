@@ -10,15 +10,6 @@
     },
     {
         "id": "A-02",
-        "name": "A-Shares",
-        "type": "stock",
-        "currency": "CNY",
-        "initialBalance": 100000,
-        "feeRate": 0.0005,
-        "riskPercent": 0.02
-    },
-    {
-        "id": "A-03",
         "name": "commodities",
         "type": "commodities",
         "currency": "CNY",
@@ -27,9 +18,18 @@
         "riskPercent": 0.02
     },
     {
+        "id": "A-03",
+        "name": "cn_stocks",
+        "type": "cn_stocks",
+        "currency": "CNY",
+        "initialBalance": 100000,
+        "feeRate": 0.0005,
+        "riskPercent": 0.02
+    },
+    {
         "id": "A-04",
-        "name": "pm",
-        "type": "pm",
+        "name": "prediction",
+        "type": "prediction",
         "currency": "USD",
         "initialBalance": 1000,
         "feeRate": 0.0,

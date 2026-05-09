@@ -8,13 +8,17 @@
   },
   "main": "index.js",
   "bin": {
-      "tj": "bin/tj",
-      "tj-acct": "bin/tj-acct"
+    "tj": "bin/tj",
+    "tj-acct": "bin/tj-acct",
+    "tj-parse": "bin/tj-parse"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@langchain/core": "^1.1.45",
+    "@langchain/google": "^0.1.11",
+    "@langchain/openai": "^1.4.5",
     "commander": "^12.1.0",
     "dotenv": "^17.4.2",
     "luxon": "^3.7.2",

@@ -10,21 +10,12 @@ import { createMongoClient } from "../src/mongo-client.js";
 import { TradeIdGenerator, OrderIdGenerator } from "../src/id-gen.js";
 import { TradeService } from "../src/trade-service.js";
 import { TradeFormatter } from "../src/trade-formatter.js";
+import { readStdin } from "../src/helpers.js";
 import config from "../tj.config.js";
 
 
-async function readStdin() {
-    const chunks = [];
-
-    for await (const chunk of process.stdin) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-
-    return Buffer.concat(chunks).toString("utf-8");
-}
-
 async function withTradeService(handler) {
-    const client = await createMongoClient(process.env.Mongo_url);
+    const client = await createMongoClient(config.mongoUrl);
     await client.connect();
     const db = client.db("trading-journal");
 
@@ -176,7 +167,7 @@ async function commitTradeFile(tradeService, file) {
         type: 'add | reduce | close',
         price: null,
         amount: null,
-        executedAt: DateTime.now().toFormat('yyyy-MM-dd HH:mm')
+        executedAt: lastOrder.executedAt
     }
 
     let tradeId = tradeData.id;
@@ -421,4 +412,9 @@ async function main() {
     await program.parseAsync()
 }
 
-await main();
+try {
+    await main();
+} catch (e) {
+    console.error(e);
+    process.exit(1);
+}

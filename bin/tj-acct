@@ -5,11 +5,13 @@ import fs from "fs/promises";
 import { program } from "commander";
 import { createMongoClient } from "../src/mongo-client.js";
 import { AccountService } from "../src/account-service.js";
+import { readStdin } from "../src/helpers.js";
 import * as schemas from "../src/schemas.js";
+import config from "../tj.config.js";
 
 
 async function withAccountService(handler) {
-    const client = await createMongoClient(process.env.Mongo_url);
+    const client = await createMongoClient(config.mongoUrl);
     await client.connect();
     const db = client.db("trading-journal");
     const accountService = new AccountService(db);
@@ -74,16 +76,6 @@ async function importAccounts(file) {
     });
 }
 
-async function readStdin() {
-    const chunks = [];
-
-    for await (const chunk of process.stdin) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-
-    return Buffer.concat(chunks).toString("utf-8");
-}
-
 async function readAccounts() {
     const content = await readStdin();
 
@@ -124,4 +116,9 @@ async function main() {
     await program.parseAsync()
 }
 
-await main();
+try {
+    await main();
+} catch (e) {
+    console.error(e);
+    process.exit(1);
+}

@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { DateTime } from "luxon";
+import { id } from "zod/locales";
 
 export const Account = z.object({
     id: z.string()
@@ -194,6 +195,4 @@ export const TradeFilter = z.object({
     timeRange: TimeRange,
     limit: z.number(),
 }).partial();
-
-
 

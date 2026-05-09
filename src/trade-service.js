@@ -243,9 +243,7 @@ export class TradeService {
             match.tags = { $all: tags };
         }
 
-        if (status === 'active') {
-            match.endTime = { $exists: false };
-        } else {
+        if (status === 'closed') {
             match.endTime = { $exists: true };
 
             if (timeRange?.since) {
@@ -255,10 +253,11 @@ export class TradeService {
             if (timeRange?.until) {
                 match.endTime.$lte = timeRange.until;
             }
-        }
+        } else {
+            match.endTime = { $exists: false };
+        } 
 
         const { deletedCount } = await this.tradesCollection.deleteMany(match);
-        await this.countersCollection.deleteMany({ _id: /^[TO]-/ });
         return deletedCount;
     }
 
@@ -303,17 +302,7 @@ export class TradeService {
             match.tags = { $all: tags };
         }
 
-        if (status === 'active') {
-            match.endTime = { $exists: false };
-            
-            const tradeDocs = await this.tradesCollection
-                .find(query, { projection: { orders: false } })
-                .limit(limit)
-                .toArray();
-
-            return tradeDocs.map(this._toActiveTrade);
-
-        } else {
+        if (status === 'closed') {
             match.endTime = { $exists: true };
 
             if (timeRange?.since) {
@@ -334,6 +323,16 @@ export class TradeService {
                 const trade = this._toClosedTrade(tradeDoc);
                 return this.tradeFormatter?.format(trade) ?? trade;
             });
+        } else {
+            match.endTime = { $exists: false };
+            
+            const tradeDocs = await this.tradesCollection
+                .find(match, { projection: { orders: false } })
+                .limit(limit)
+                .toArray();
+
+            return tradeDocs.map(this._toActiveTrade);
+
         }
     }
 
