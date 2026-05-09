@@ -1,3 +1,7 @@
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
+
+
 export async function readStdin() {
     const chunks = [];
 
@@ -6,4 +10,12 @@ export async function readStdin() {
     }
 
     return Buffer.concat(chunks).toString("utf-8");
+}
+
+export async function writeStdout(content) {
+    if (typeof content !== "string") {
+        throw new TypeError("writeStdout only accepts string");
+    }
+
+    await pipeline(Readable.from([content]), process.stdout);
 }

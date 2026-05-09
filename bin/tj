@@ -13,7 +13,7 @@ import { AccountService } from "../src/account-service.js";
 import { parseTradeInput } from "../src/parse-trade-input.js";
 import { TradeFormatter } from "../src/trade-formatter.js";
 import { createLLMClient } from "../src/llm-client.js";
-import { readStdin } from "../src/helpers.js";
+import { readStdin, writeStdout } from "../src/helpers.js";
 import config from "../tj.config.js";
 
 
@@ -49,9 +49,7 @@ function parseTags(value) {
 
 
 async function draft(inputText, options) {
-    const now = DateTime.now()
-    const filename = `draft-${now.toFormat('yyyyMMdd-HHmmss')}.json`;
-    const filePath = path.join(config.dataDir, filename);
+    const now = DateTime.now();
 
     const defaultTemplate = {
         accountId: "",
@@ -108,8 +106,19 @@ async function draft(inputText, options) {
     }
 
     const finalTemplate = { ...defaultTemplate, ...(prefilledData || {}) };
+    const content = JSON.stringify(finalTemplate, undefined, 4) + '\n';
 
-    const content = JSON.stringify(finalTemplate, undefined, 4);
+    if (options.output === '-') {
+        await writeStdout(content);
+        return;
+    }
+
+    let filePath = options.output;
+    if (!filePath) {
+         const filename = `draft-${now.toFormat('yyyyMMdd-HHmmss')}.json`;
+         filePath = path.join(config.dataDir, filename);
+    }
+
     await fs.writeFile(filePath, content);
 
     if (options.open) {
@@ -349,6 +358,7 @@ async function main() {
         .command("draft")
         .description("Create a local trade draft file in data directory")
         .argument("[inputText]", "Natural language input to extract trade data and prefill the draft")
+        .option("-o, --output <path>", 'Write output to file, use "-" for stdout')
         .option("--no-open", "Do not open the file after creation")
         .action(draft);
 
