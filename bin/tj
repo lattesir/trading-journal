@@ -9,7 +9,10 @@ import { DateTime, Settings } from "luxon";
 import { createMongoClient } from "../src/mongo-client.js";
 import { TradeIdGenerator, OrderIdGenerator } from "../src/id-gen.js";
 import { TradeService } from "../src/trade-service.js";
+import { AccountService } from "../src/account-service.js";
+import { parseTradeInput } from "../src/parse-trade-input.js";
 import { TradeFormatter } from "../src/trade-formatter.js";
+import { createLLMClient } from "../src/llm-client.js";
 import { readStdin } from "../src/helpers.js";
 import config from "../tj.config.js";
 
@@ -45,10 +48,9 @@ function parseTags(value) {
 }
 
 
-async function draft(templateJson, options) {
-    const dt = DateTime.now()
-    const timeStr = dt.toFormat('yyyyMMdd-HHmmss');
-    const filename = `draft-${timeStr}.json`;
+async function draft(inputText, options) {
+    const now = DateTime.now()
+    const filename = `draft-${now.toFormat('yyyyMMdd-HHmmss')}.json`;
     const filePath = path.join(config.dataDir, filename);
 
     const defaultTemplate = {
@@ -60,28 +62,52 @@ async function draft(templateJson, options) {
                 type: 'entry | add | reduce | close',
                 price: null,
                 amount: null,
-                executedAt: dt.toFormat('yyyy-MM-dd HH:mm')
+                executedAt: now.toFormat('yyyy-MM-dd HH:mm')
             }
         ],
         multiplier: 1,
         tags: []
     }
 
-    let userTemplate = {};
+    let prefilledData;
 
-    if (templateJson) {
+    const userInput = inputText?.trim();
+
+    if (userInput) {
+        const mongo = await createMongoClient(config.mongoUrl);
+        await mongo.connect();
+        const db = mongo.db("trading-journal");
+        const accountService = new AccountService(db);
+        const tradeService = new TradeService(db);
+
+        let accounts;
+        let activeTrades;
+
         try {
-            userTemplate = JSON.parse(templateJson);
-        } catch (e) {
-            throw new Error('Parse template string failed');
+            accounts = await accountService.list();
+            accounts = accounts.map(({ id, type }) => ({ id, type }));
+            activeTrades = await tradeService.listTrades({ status: "active" });
+        } finally {
+            await mongo.close();
         }
 
-        if (typeof userTemplate !== 'object') {
-            throw new Error('Invalid template');
+        const llm = await createLLMClient(config.llm);
+
+        try {
+            prefilledData = await parseTradeInput({
+                llm,
+                currentTime: now.toFormat('yyyy-MM-dd HH:mm:ss'),
+                timeZone: now.zoneName,
+                accounts,
+                activeTrades,
+                userInput
+            });
+        } catch (e) {
+            // If parsing fails, we still want to create the draft file with default template
         }
     }
 
-    const finalTemplate = { ...defaultTemplate, ...userTemplate };
+    const finalTemplate = { ...defaultTemplate, ...(prefilledData || {}) };
 
     const content = JSON.stringify(finalTemplate, undefined, 4);
     await fs.writeFile(filePath, content);
@@ -322,7 +348,7 @@ async function main() {
     program
         .command("draft")
         .description("Create a local trade draft file in data directory")
-        .argument("[templateJson]", "JSON template string to merge with default template")
+        .argument("[inputText]", "Natural language input to extract trade data and prefill the draft")
         .option("--no-open", "Do not open the file after creation")
         .action(draft);
 

@@ -11,6 +11,7 @@ export default {
     locale: 'zh-CN',
     dataDir: path.join(rootDir, 'data'),
     mongoUrl: process.env.Mongo_url || 'mongodb://localhost:27017',
+
     llm: {
         provider: 'google',
         model: 'gemini-3-flash-preview',

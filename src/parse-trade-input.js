@@ -101,42 +101,58 @@ Top-level output rules:
 Account inference rules:
 
 - General principle:
-  Infer account type based on the underlying asset domain and trading context,
-  not just keywords. Only assign accountId if there is exactly one clear match.
+  Infer the most relevant account type based on trading domain and context,
+  not just asset name. The result should be a semantic match to one of the
+  existing account types, rather than a fixed predefined label.
+
+  Only assign accountId if there is exactly one clear match among the
+  existing accounts.
 
 - Crypto:
-  If the user is trading assets on crypto exchanges or refers to tokens,
-  pairs (e.g. BTCUSDT), or on-chain / exchange-based instruments,
-  infer "crypto".
-
-  This also includes tokenized or synthetic assets (e.g. stocks, indices,
-  forex) traded inside crypto exchanges. In such cases, prioritize the
-  trading venue (crypto) over the asset class.
+  If the user is trading on crypto exchanges or refers to tokens, pairs
+  (e.g. BTCUSDT, BTC/USDT), or on-chain instruments, associate the trade
+  with an account that represents crypto trading.
 
 - Commodities (China futures):
-  If the user is trading regulated Chinese commodity futures contracts
-  (typically expressed via Chinese names, domestic contract conventions,
-  or industrial commodities context),
-  infer "commodities".
-
-  Distinguish from crypto-traded commodities:
-  if the same asset (e.g. gold, oil) is traded via a crypto exchange,
-  it should still be classified as "crypto", not "commodities".
+  If the user is trading regulated Chinese commodity futures (domestic
+  contracts, industrial commodities context, or Chinese naming),
+  associate the trade with an account that represents Chinese commodity
+  futures trading.
 
 - China A-shares:
   If the user is trading equities listed in mainland China markets
-  (A-share context, Chinese stock names, or typical A-share code patterns),
-  infer "cn_stocks".
+  (A-share context, Chinese stock names, or typical code patterns),
+  associate the trade with an account that represents China A-share
+  equity trading.
+
+- Forex:
+  If the user is trading currency pairs (e.g. EURUSD, GBPUSD, USDJPY) or
+  refers to foreign exchange markets, associate the trade with an account
+  that represents forex trading.
 
 - Prediction markets:
-  If the user is trading event-based outcomes (YES/NO shares, probabilities,
-  or market questions with slugs),
-  infer "prediction".
+  If the user is trading event-based outcomes (YES/NO shares,
+  probabilities, or slug-based markets),
+  associate the trade with an account that represents prediction markets.
 
-  These instruments are defined by event resolution rather than price movement.
+- Crypto tradfi ambiguity:
+  Some crypto exchanges offer synthetic or tokenized tradfi assets
+  (e.g. gold, forex, indices).
+
+  Use symbol format and trading context to distinguish:
+
+  - If the symbol uses crypto pair format (e.g. XAU/USDT, EUR/USDT),
+    treat it as crypto trading and associate with a crypto account.
+
+  - If the symbol does not follow crypto pair conventions,
+    treat it as a traditional financial asset and associate with the
+    corresponding traditional account (e.g. commodities, forex).
+
+  - If ambiguity remains:
+    Prefer traditional financial accounts over crypto accounts
+    when both are available.
 
 - Fallback rule:
-
   If multiple account types may match, do not assign accountId.
   If no clear domain can be determined, do not assign accountId.
 
@@ -147,8 +163,7 @@ Active trade inference rules:
 
 - Match based on symbol, direction, accountId, and recency.
 
-- If there is exactly one clear match,
-  set tradeId and mode to "append_order".
+- If there is exactly one clear match, set tradeId.
 
 - If multiple trades could match, do not set tradeId.
 
@@ -167,7 +182,7 @@ Direction rules:
 
 PnL rules:
 
-- If the user explicitly provides realized profit or loss, set pnl and pnlMode to "manual".
+- If the user explicitly provides realized profit or loss, set pnl.
 - If the user does not explicitly provide PnL, do not set pnl.
 - Do not calculate PnL from price and amount.
 
