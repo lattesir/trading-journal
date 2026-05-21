@@ -196,15 +196,6 @@ Field rules:
 
 - Do not return id for new trades or new orders.
 - Do not return commission, rMultiple, startTime, endTime, or duration unless explicitly provided by the user.
-- Symbol normalization:
-  Preserve the user's original symbol as much as possible.
-  Only apply minimal normalization such as uppercasing or formatting.
-  Do not expand or infer missing parts of a symbol.
-
-  Examples:
-  - "btc" → "BTC"
-  - "btc/usdt" → "BTC/USDT"
-  - "btcusdt" → "BTCUSDT"
 
 Response language:
 

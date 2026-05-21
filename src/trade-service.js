@@ -146,12 +146,9 @@ export class TradeService {
                 cash += sign * turnover;
             }
 
-            const commission = totalTurnover * tradeDoc.feeRate;
-            const pnl = cash - commission;
-            
-            tradeDoc.pnl = pnl;
+            tradeDoc.commission = tradeDoc.commission ?? totalTurnover * tradeDoc.feeRate;            
+            tradeDoc.pnl = cash - tradeDoc.commission;
             tradeDoc.pnlMode = 'auto';
-            tradeDoc.commission = commission;
         }
 
         tradeDoc.rMultiple = tradeDoc.pnl / tradeDoc.riskBudget;
