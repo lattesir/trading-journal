@@ -14,7 +14,7 @@ export default {
 
     llm: {
         provider: 'google',
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.5-flash',
         apiKey: process.env.Google_apiKey,
         temperature: 0
     }

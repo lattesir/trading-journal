@@ -91,18 +91,14 @@ async function draft(inputText, options) {
 
         const llm = await createLLMClient(config.llm);
 
-        try {
-            prefilledData = await parseTradeInput({
-                llm,
-                currentTime: now.toFormat('yyyy-MM-dd HH:mm:ss'),
-                timeZone: now.zoneName,
-                accounts,
-                activeTrades,
-                userInput
-            });
-        } catch (e) {
-            // If parsing fails, we still want to create the draft file with default template
-        }
+        prefilledData = await parseTradeInput({
+            llm,
+            currentTime: now.toFormat('yyyy-MM-dd HH:mm:ss'),
+            timeZone: now.zoneName,
+            accounts,
+            activeTrades,
+            userInput
+        });
     }
 
     const finalTemplate = { ...defaultTemplate, ...(prefilledData || {}) };
